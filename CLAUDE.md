@@ -14,8 +14,13 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
 - **`server/` is its own git repository**: https://github.com/pbrajesh/kudumbam-app (public), branch `main`
   (first commit 23 Oct 2026). Commit and push server changes from inside `server/`. It is self-contained: its data
   types are in `server/src/models.ts` (a copy of the app's types — change both together) and its tests use
-  `test/fixtures/sample.json` (the made-up `sample.ged`, parsed). The project root (Angular app, deploy/, docs/)
-  is still **not** in git; `data/` holds family data and must never be committed.
+  `test/fixtures/sample.json` (the made-up `sample.ged`, parsed).
+- **The project root is the web app repository**: https://github.com/pbrajesh/kudumbam-web (public), branch `main`
+  (first commit 23 Oct 2026): Angular app, `deploy/`, `docs/`, README, this file. It ignores `server/` (separate
+  repo, cloned into `server/`), `data/` (family data — never commit), `.claude/`, `dist/`, `deploy/out/`.
+  Both repos are public: never commit family data, `.env` files, backups or secret keys.
+- On this PC, `git add` sometimes fails once with "unable to write file .git/objects/…: Permission denied"
+  (a brief file lock); running it again works.
 - Phases 3–5 done 22 Oct 2026 (members; router + My trees; limits, rate limiting, delete account, privacy page).
   Hosting chosen 23 Oct 2026: a headless Raspberry Pi — guide and files in `deploy/raspberry-pi/` (not yet set up
   on the Pi). Undecided: product name.
