@@ -1,0 +1,13 @@
+# Nightly at 03:30 (or soon after the Pi starts, if it was off then).
+#   sudo systemctl enable --now family-tree-backup.timer
+#   systemctl list-timers family-tree-backup.timer
+[Unit]
+Description=Nightly family tree database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

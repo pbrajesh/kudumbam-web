@@ -1,0 +1,36 @@
+# The API server. Copy to /etc/systemd/system/, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now family-tree-api
+# Logs: journalctl -u family-tree-api -f
+
+[Unit]
+Description=Family tree API (Node + PostgreSQL)
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=familytree
+Group=familytree
+WorkingDirectory=/opt/family-tree/server
+# Settings (DATABASE_URL, SUPABASE_URL, …) are in /opt/family-tree/server/.env, readable by this user only.
+ExecStart=/usr/bin/node --env-file=/opt/family-tree/server/.env src/index.ts
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+# Keep the service in its own corner of the system.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/family-tree
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

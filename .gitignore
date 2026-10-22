@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.angular/
+out-tsc/
+
+# The API server has its own repository (https://github.com/pbrajesh/kudumbam-app); clone it into server/
+server/
+
+# Your own family files and database backups (never committed)
+data/
+
+# Raspberry Pi packages (deploy/raspberry-pi/package.ps1)
+deploy/out/
+
+# Local tool settings for this computer
+.claude/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,2 @@
+# Netlify: send every path (such as /t/<tree id> or /privacy) to the app, which picks the page itself.
+/*    /index.html   200

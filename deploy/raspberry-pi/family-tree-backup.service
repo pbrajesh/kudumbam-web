@@ -1,0 +1,10 @@
+# Runs backup-db.sh once; started every night by family-tree-backup.timer.
+[Unit]
+Description=Back up the family tree database
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+ExecStart=/bin/sh /opt/family-tree/deploy/backup-db.sh
