@@ -25,8 +25,22 @@ export interface MemberRow {
   /** This row is the signed-in user. */
   you: boolean;
   addedAt: string;
+  /** The person in the tree they are (approved by an owner), or null. */
+  personId: string | null;
+  /** The person they said "This is me" about, waiting for an owner, or null. */
+  claimedPersonId: string | null;
 }
-export interface TreeInfo extends TreeSummary {
+/** Who the signed-in user is in a tree. */
+export interface YouInTree {
+  personId: string | null;
+  claimedPersonId: string | null;
+}
+/** Your link, and (owners only, else 0) how many "This is me" claims wait for approval. */
+export interface YouResponse {
+  you: YouInTree;
+  pendingClaims: number;
+}
+export interface TreeInfo extends TreeSummary, YouResponse {
   fileName: string;
   settings: TreeSettings;
 }
@@ -34,7 +48,7 @@ export interface Versions {
   people: Record<string, number>;
   families: Record<string, number>;
 }
-export interface TreeResponse {
+export interface TreeResponse extends YouResponse {
   data: TreeData;
   versions: Versions;
   fileName: string;
@@ -92,6 +106,23 @@ export class TreeApi {
   }
   /** Any member except the last owner. */
   leaveTree(id: string) { return firstValueFrom(this.http.delete<{ left: string }>(`${this.tree(id)}/members/me`)); }
+  /** "This is me". Owners are linked at once; everyone else waits for an owner to approve. */
+  claimPerson(id: string, personId: string) {
+    return firstValueFrom(this.http.put<YouResponse>(`${this.tree(id)}/members/me/claim`, { personId }));
+  }
+  withdrawClaim(id: string) { return firstValueFrom(this.http.delete<YouResponse>(`${this.tree(id)}/members/me/claim`)); }
+  unlinkMe(id: string) { return firstValueFrom(this.http.delete<YouResponse>(`${this.tree(id)}/members/me/person`)); }
+  /** Owners: link a member to a person (this approves their claim). Returns the updated list. */
+  linkMember(id: string, email: string, personId: string) {
+    return firstValueFrom(this.http.put<MemberRow[]>(`${this.tree(id)}/members/${encodeURIComponent(email)}/person`, { personId }));
+  }
+  unlinkMember(id: string, email: string) {
+    return firstValueFrom(this.http.delete<MemberRow[]>(`${this.tree(id)}/members/${encodeURIComponent(email)}/person`));
+  }
+  /** Owners: turn down a member's pending claim. */
+  rejectClaim(id: string, email: string) {
+    return firstValueFrom(this.http.delete<MemberRow[]>(`${this.tree(id)}/members/${encodeURIComponent(email)}/claim`));
+  }
   /** Owners only; `confirm` must be the tree's exact name. */
   deleteTree(id: string, confirm: string) {
     return firstValueFrom(this.http.delete<{ deleted: string }>(this.tree(id), { params: { confirm } }));

@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { environment } from '../environments/environment';
 import { FamilyStore } from './family-store.service';
+import { displayName, lifeSpan } from './models';
 import { MemberRow, Role, TreeApi, messageOf } from './tree-api.service';
 
 const ROLES: { v: Role; label: string; hint: string }[] = [
@@ -12,6 +13,8 @@ const ROLES: { v: Role; label: string; hint: string }[] = [
 /**
  * Who is in the tree. Everyone sees the list and can leave; owners add people by email, change roles and remove
  * people. Added people join when they first sign in with that email, so the owner gets a message to send them.
+ * Each member can be linked to the person they are in the tree: they say "This is me" on a card, and an owner
+ * approves it here (or links them directly).
  */
 @Component({
   selector: 'app-members',
@@ -25,6 +28,39 @@ const ROLES: { v: Role; label: string; hint: string }[] = [
             <span class="member-who">
               <span class="member-email">{{ m.email }}@if (m.you) { <span class="muted"> (you)</span> }</span>
               @if (!m.joined) { <span class="tag">invited · not signed in yet</span> }
+              @if (m.personId) {
+                <span class="member-person">In the tree: <strong>{{ personName(m.personId) }}</strong>
+                  @if (isOwner()) {
+                    <button type="button" class="link small" (click)="unlink(m)" [disabled]="busy()">Unlink</button>
+                  }
+                </span>
+              }
+              @if (m.claimedPersonId) {
+                <span class="member-claim">Says they are <strong>{{ personName(m.claimedPersonId) }}</strong>
+                  @if (isOwner()) {
+                    <span class="member-confirm">
+                      <button type="button" class="btn small primary" (click)="approve(m)" [disabled]="busy()">Approve</button>
+                      <button type="button" class="btn small ghost" (click)="reject(m)" [disabled]="busy()">Turn down</button>
+                    </span>
+                  } @else if (m.you) {
+                    <span class="muted"> · waiting for an owner</span>
+                  }
+                </span>
+              }
+              @if (isOwner() && !m.personId && !m.claimedPersonId && store.people().length) {
+                @if (linking() === m.email) {
+                  <span class="member-link">
+                    <label class="sr-only" [for]="'link-' + m.email">Person in the tree for {{ m.email }}</label>
+                    <select [id]="'link-' + m.email" (change)="link(m, $event)" [disabled]="busy()">
+                      <option value="">Choose who they are…</option>
+                      @for (p of peopleOptions(); track p.id) { <option [value]="p.id">{{ p.label }}</option> }
+                    </select>
+                    <button type="button" class="btn small ghost" (click)="linking.set('')">Cancel</button>
+                  </span>
+                } @else {
+                  <button type="button" class="link small member-link-btn" (click)="linking.set(m.email)">Link to a person in the tree…</button>
+                }
+              }
             </span>
             @if (isOwner()) {
               <label class="sr-only" [for]="'role-' + m.email">Role for {{ m.email }}</label>
@@ -114,6 +150,17 @@ export class MembersComponent {
   readonly confirmLeave = signal(false);
   /** Email of the member whose Remove button was pressed once. */
   readonly confirmRemove = signal('');
+  /** Email of the member an owner is choosing a person for. */
+  readonly linking = signal('');
+
+  /** People nobody is linked to yet, for the owner's "Link to a person" list. */
+  readonly peopleOptions = computed(() => {
+    const taken = new Set(this.members().map(m => m.personId));
+    return this.store.people()
+      .filter(p => !taken.has(p.id))
+      .map(p => ({ id: p.id, label: `${displayName(p)}${lifeSpan(p) ? ' · ' + lifeSpan(p) : ''} · @${p.id}@` }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  });
 
   readonly isOwner = computed(() => this.store.role() === 'owner');
   readonly onlyOwner = computed(() =>
@@ -124,7 +171,36 @@ export class MembersComponent {
   });
 
   constructor() {
-    void this.run(async id => this.members.set(await this.api.listMembers(id))).then(() => this.loading.set(false));
+    void this.run(async id => this.show(await this.api.listMembers(id))).then(() => this.loading.set(false));
+  }
+
+  /** Show a fresh list, keeping the tree's own record of you and of waiting claims in step with it. */
+  private show(list: MemberRow[]) {
+    this.members.set(list);
+    if (this.isOwner()) this.store.pendingClaims.set(list.filter(m => m.claimedPersonId).length);
+    const me = list.find(m => m.you);
+    if (me) this.store.you.set({ personId: me.personId, claimedPersonId: me.claimedPersonId });
+  }
+
+  personName(id: string) {
+    const p = this.store.data().people[id];
+    return p ? displayName(p) : `@${id}@`;
+  }
+
+  async approve(m: MemberRow) {
+    const personId = m.claimedPersonId;
+    if (personId) await this.run(async id => this.show(await this.api.linkMember(id, m.email, personId)));
+  }
+  async reject(m: MemberRow) {
+    await this.run(async id => this.show(await this.api.rejectClaim(id, m.email)));
+  }
+  async unlink(m: MemberRow) {
+    await this.run(async id => this.show(await this.api.unlinkMember(id, m.email)));
+  }
+  async link(m: MemberRow, ev: Event) {
+    const personId = (ev.target as HTMLSelectElement).value;
+    if (!personId) return;
+    if (await this.run(async id => this.show(await this.api.linkMember(id, m.email, personId)))) this.linking.set('');
   }
 
   value(ev: Event) { return (ev.target as HTMLInputElement | HTMLSelectElement).value; }
@@ -133,7 +209,7 @@ export class MembersComponent {
   async add(ev: Event) {
     ev.preventDefault();
     const email = this.email().trim().toLowerCase();
-    const ok = await this.run(async id => this.members.set(await this.api.addMember(id, email, this.role())));
+    const ok = await this.run(async id => this.show(await this.api.addMember(id, email, this.role())));
     if (!ok) return;
     this.email.set('');
     this.copied.set(false);
@@ -147,14 +223,14 @@ export class MembersComponent {
   async setRole(m: MemberRow, ev: Event) {
     const sel = ev.target as HTMLSelectElement;
     const role = sel.value as Role;
-    const ok = await this.run(async id => this.members.set(await this.api.changeRole(id, m.email, role)));
+    const ok = await this.run(async id => this.show(await this.api.changeRole(id, m.email, role)));
     if (!ok) { sel.value = m.role; return; }
     // Your own role changed: reload so the app shows what you can now do.
     if (m.you) await this.store.load(true);
   }
 
   async remove(m: MemberRow) {
-    await this.run(async id => this.members.set(await this.api.removeMember(id, m.email)));
+    await this.run(async id => this.show(await this.api.removeMember(id, m.email)));
     this.confirmRemove.set('');
   }
 
