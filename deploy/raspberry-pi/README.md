@@ -47,7 +47,13 @@ curl -fsSL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh
 sudo bash nodesource_setup.sh
 sudo apt install -y nodejs
 node --version        # v24.x (anything from v22.18 works)
+npm --version         # comes with nodejs from NodeSource
 ```
+
+Install Node this way, for the whole system: the API service runs `/usr/bin/node`, and the install script runs
+`npm` with sudo. A Node installed only for your user (nvm, or a download in your home folder) is not seen by either,
+and Raspberry Pi OS's own `nodejs` package (without the NodeSource step) is too old and has no npm.
+`install-update.sh` checks this before changing anything and stops with these instructions if Node or npm is missing.
 
 ## 3. Create the database
 

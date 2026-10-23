@@ -27,6 +27,26 @@ for zip in "$@"; do
   else echo "$zip does not look like a family tree package."; exit 1
   fi
 done
+
+# The API needs Node 22.18+ with npm, at /usr/bin/node where the service (family-tree-api.service) runs it.
+# Checked before anything changes, so a failed check leaves the installed version as it was.
+if [ -n "$api" ]; then
+  node_help="Install Node.js as in the guide, step 2 (NodeSource):
+  curl -fsSL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh
+  sudo bash nodesource_setup.sh
+  sudo apt install -y nodejs
+A Node installed only for your user (nvm, a download in your home folder) is not seen by sudo or by the service."
+  if [ ! -x /usr/bin/node ] || ! command -v npm >/dev/null 2>&1; then
+    echo "Node.js and npm are not installed for the system (/usr/bin/node, npm)."
+    echo "$node_help"
+    exit 1
+  fi
+  if ! /usr/bin/node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 18) ? 0 : 1)'; then
+    echo "Node.js $(/usr/bin/node --version) is too old: the API needs 22.18 or newer."
+    echo "$node_help"
+    exit 1
+  fi
+fi
 install -d -m 755 /opt/family-tree
 
 # 1. The Pi files (scripts, services, Apache site) come with the app package.

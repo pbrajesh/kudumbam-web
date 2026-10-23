@@ -72,6 +72,8 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
   `deploy/package.sh` → `kudumbam-app-<date>.zip` (`server/`). Both are bash (PowerShell dropped) and do not build:
   the owner runs `npm run build` first. They zip with `zip`, or Python when `zip` is missing (Git Bash). No `.env` (not even `.env.example`), data or backups in either.
   `install-update.sh` takes either zip or both; `rollback.sh [app|server]`. The Pi needs `unzip`.
+  `install-update.sh` checks for `/usr/bin/node` (22.18+) and `npm` before changing anything when the API zip is
+  given (the owner's first run on the Pi failed with "npm: not found").
 - **Next:** the owner sets up the Pi following `deploy/raspberry-pi/README.md` (needs: Pi OS Lite 64-bit,
   a domain on Cloudflare for the tunnel, Supabase Site URL change). Small follow-up: tree-page header buttons wrap to
   three rows on phones. Still to decide: product name.
