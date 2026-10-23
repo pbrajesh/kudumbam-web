@@ -1,0 +1,13 @@
+# Nightly at 04:00, after the local backup at 03:30 (or soon after the Pi starts, if it was off then).
+#   sudo systemctl enable --now family-tree-supabase.timer
+#   systemctl list-timers family-tree-supabase.timer
+[Unit]
+Description=Nightly copy of the family tree database to Supabase
+
+[Timer]
+OnCalendar=*-*-* 04:00
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

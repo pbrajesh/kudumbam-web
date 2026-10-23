@@ -213,7 +213,7 @@ again as in step 7 (keeping your `ServerName`).
 - **Copy them off the Pi** regularly — a backup on the same card or disk does not survive it failing. For example,
   from your PC: `scp <user>@familytree.local:/var/backups/family-tree/*.dump D:\family-tree-backups\`
   (first `sudo chmod o+rx /var/backups/family-tree && sudo chmod o+r /var/backups/family-tree/*.dump`, or copy them
-  with `sudo` to your home folder).
+  with `sudo` to your home folder). The nightly copy to Supabase (below) does this automatically for the latest state.
 - Check the timer: `systemctl list-timers family-tree-backup.timer`; run one now:
   `sudo systemctl start family-tree-backup`.
 
@@ -222,6 +222,62 @@ again as in step 7 (keeping your `ServerName`).
 ```sh
 sudo systemctl stop family-tree-api
 sudo -u postgres pg_restore --clean --if-exists --no-owner --role=familytree -d familytree /var/backups/family-tree/familytree-<date>.dump
+sudo systemctl start family-tree-api
+```
+
+### Off-site copy in Supabase
+
+Every night at 04:00 (after the local backup), `supabase-sync.sh` copies the whole database to your Supabase
+project's PostgreSQL database, so a copy survives the Pi failing. Each run **replaces** the previous copy; the
+dated `.dump` files on the Pi stay the history. The copy goes into its own schema, `familytree_backup`, never
+`public` (which Supabase's Data API exposes to browsers), and the run is one transaction: if it fails half way, the
+previous copy is kept.
+
+1. In Supabase: **Connect** (top of the project page) → **Session pooler** → copy the URI. It looks like
+   `postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres`.
+   Use the session pooler, not "Direct connection": that one needs IPv6, which most home connections lack. If you
+   do not know the database password, reset it under **Project Settings → Database**.
+2. On the Pi, keep it in a file only root and the postgres user can read (add `?sslmode=require` to the end):
+   ```sh
+   sudo install -d -m 755 /etc/family-tree
+   sudo nano /etc/family-tree/supabase.env
+   ```
+   ```ini
+   SUPABASE_DB_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+   ```
+   A password with `@ : / ? # %` in it must be percent-encoded there (`@` → `%40`), or choose one without them.
+   ```sh
+   sudo chown root:postgres /etc/family-tree/supabase.env
+   sudo chmod 640 /etc/family-tree/supabase.env
+   ```
+3. Turn it on and run it once:
+   ```sh
+   sudo cp /opt/family-tree/deploy/family-tree-supabase.* /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now family-tree-supabase.timer
+   sudo systemctl start family-tree-supabase
+   journalctl -u family-tree-supabase -n 20       # "Copied to Supabase (familytree_backup): 1 trees, 312 people, …"
+   ```
+
+In the Supabase **Table Editor** the copy appears under the schema `familytree_backup`. Do not add that schema to
+**Exposed schemas** (Project Settings → Data API): that would let the website's public key read it. Check the
+timer with `systemctl list-timers family-tree-supabase.timer`; a failed night shows in
+`systemctl status family-tree-supabase` and the journal. Supabase's free plan pauses projects that sit idle for a week;
+the nightly copy should keep it active, but if the dashboard ever shows it paused, restore it there.
+
+**Restore from Supabase** (only if the Pi's own `.dump` files are lost too). `pg_dump` must be at least as new as
+Supabase's PostgreSQL (see **Project Settings → Infrastructure**); if the Pi's is older, install a newer
+`postgresql-client` from the PostgreSQL apt repository (apt.postgresql.org) first. Into an empty database:
+
+```sh
+sudo systemctl stop family-tree-api
+. /etc/family-tree/supabase.env    # as root: sudo -s first
+pg_dump "$SUPABASE_DB_URL" --schema=familytree_backup --no-owner --no-privileges --no-comments \
+  | sed -e '/^CREATE SCHEMA familytree_backup;$/d' -e '/^REVOKE .* ON SCHEMA familytree_backup /d' \
+        -e 's/\bfamilytree_backup\./public./g' > /tmp/from-supabase.sql
+sudo -u postgres dropdb familytree && sudo -u postgres createdb --owner familytree familytree
+sudo -u familytree psql -v ON_ERROR_STOP=1 --single-transaction -d familytree -f /tmp/from-supabase.sql
+rm /tmp/from-supabase.sql
 sudo systemctl start family-tree-api
 ```
 
