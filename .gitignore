@@ -9,7 +9,7 @@ server/
 # Your own family files and database backups (never committed)
 data/
 
-# Raspberry Pi packages (deploy/raspberry-pi/package.ps1)
+# Raspberry Pi packages (deploy/raspberry-pi/package.sh)
 deploy/out/
 
 # Local tool settings for this computer

@@ -68,8 +68,9 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
 - 23 Oct 2026: the app is served from `/opt/family-tree/app` (was `/srv/…`). **Apache replaces Caddy** (already on
   the owner's Pi): `deploy/raspberry-pi/family-tree.apache.conf` (same headers, SPA fallback, `/api` proxy, log
   without query strings), tested with Apache 2.4 against the real build and API. **Two zips**: this repo's
-  `package.ps1` → `kudumbam-web-<date>.zip` (`app/` + `deploy/`); kudumbam-app's `deploy/package.ps1` →
-  `kudumbam-app-<date>.zip` (`server/`). No `.env` (not even `.env.example`), data or backups in either.
+  `deploy/raspberry-pi/package.sh` → `kudumbam-web-<date>.zip` (`app/` + `deploy/`); kudumbam-app's
+  `deploy/package.sh` → `kudumbam-app-<date>.zip` (`server/`). Both are bash (PowerShell dropped) and do not build:
+  the owner runs `npm run build` first. They zip with `zip`, or Python when `zip` is missing (Git Bash). No `.env` (not even `.env.example`), data or backups in either.
   `install-update.sh` takes either zip or both; `rollback.sh [app|server]`. The Pi needs `unzip`.
 - **Next:** the owner sets up the Pi following `deploy/raspberry-pi/README.md` (needs: Pi OS Lite 64-bit,
   a domain on Cloudflare for the tunnel, Supabase Site URL change). Small follow-up: tree-page header buttons wrap to

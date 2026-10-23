@@ -62,18 +62,20 @@ sudo -u postgres createdb --owner familytree familytree
 
 ## 4. Copy the app and the API to the Pi
 
-The app and the API are separate repositories, so each one is built and packed on its own, into its own zip. Neither
-zip contains `.env` files, the `data/` folder, the local database or backups.
+The app and the API are separate repositories, so each one is packed on its own, into its own zip. Neither zip
+contains `.env` files, the `data/` folder, the local database or backups. The scripts do not build anything: run the
+app's build yourself first.
 
-**On your PC** (PowerShell), in the web app folder (kudumbam-web) and in the API folder (kudumbam-app, cloned into
-`server/`):
+**On your PC** (bash, e.g. Git Bash on Windows), in the web app folder (kudumbam-web) and in the API folder
+(kudumbam-app, cloned into `server/`). The scripts use `zip`, or Python when `zip` is not installed:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File deploy\raspberry-pi\package.ps1     # in kudumbam-web: builds the app
+```bash
+npm run build                          # in kudumbam-web: build the app (dist/family-tree/browser)
+bash deploy/raspberry-pi/package.sh    # in kudumbam-web: zips the build and the Pi files
 cd server
-powershell -ExecutionPolicy Bypass -File deploy\package.ps1                   # in kudumbam-app: checks and packs the API
+bash deploy/package.sh                 # in kudumbam-app: zips the API code (nothing to build)
 cd ..
-scp deploy\out\kudumbam-web-<date>.zip server\deploy\out\kudumbam-app-<date>.zip <user>@familytree.local:
+scp deploy/out/kudumbam-web-<date>.zip server/deploy/out/kudumbam-app-<date>.zip <user>@familytree.local:
 ```
 
 - `kudumbam-web-<date>.zip`: `app/` (the built app) and `deploy/` (these Pi files: scripts, services, Apache site)
