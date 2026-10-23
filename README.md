@@ -120,8 +120,9 @@ npm run typecheck
 
 ## Going live
 **On a Raspberry Pi (the chosen set-up):** follow [deploy/raspberry-pi/README.md](deploy/raspberry-pi/README.md) —
-PostgreSQL, the API and the app all on the Pi behind Caddy, reached through a Cloudflare Tunnel or port forwarding.
-`deploy/raspberry-pi/package.ps1` builds a package on your PC; `install-update.sh` installs or updates it on the Pi.
+PostgreSQL, the API and the app all on the Pi behind Apache, reached through a Cloudflare Tunnel or port forwarding.
+On your PC, `deploy/raspberry-pi/package.ps1` builds and zips the app, and the API's own `deploy/package.ps1` (in
+kudumbam-app) zips the API; `install-update.sh` installs or updates either zip, or both, on the Pi.
 
 **On hosted services instead:** three pieces — the Angular app (static files), the API server with a PostgreSQL
 database, and Supabase (sign-in).
