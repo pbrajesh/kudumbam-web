@@ -13,6 +13,49 @@ invited to it (see `docs/multi-tree-plan.md`).
 
 Requires Node 22.18+.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser["Relative's browser<br/>Angular 20 + D3.js app"]
+    Google["Google sign-in"]
+    CF["Cloudflare Tunnel<br/>(or port forwarding)"]
+
+    subgraph Pi["Raspberry Pi"]
+        direction TB
+        Apache["Apache :80"]
+        Static["/opt/family-tree/app<br/>built Angular app"]
+        API["API server :3000<br/>Node + Express 5<br/>systemd: family-tree-api"]
+        PG[("PostgreSQL<br/>database familytree")]
+        Dumps[("/var/backups/family-tree<br/>pg_dump, 14 days kept")]
+    end
+
+    subgraph Supabase["Supabase"]
+        Auth["Supabase Auth<br/>Google + email links"]
+        Copy[("Supabase Postgres<br/>schema familytree_backup")]
+    end
+
+    Browser -- "HTTPS" --> CF --> Apache
+    Apache -- "everything else" --> Static
+    Apache -- "/api/*" --> API
+    API -- "SQL" --> PG
+    Browser -- "sign in, get access token" --> Auth
+    Auth -. "OAuth" .-> Google
+    API -. "checks tokens against<br/>public keys (JWKS)" .-> Auth
+    PG -- "nightly 03:30<br/>family-tree-backup.timer" --> Dumps
+    PG -- "daily 16:00 IST<br/>family-tree-supabase.timer" --> Copy
+```
+
+- **Browser app** (this repository): served as static files by Apache on the Pi. It signs in directly with Supabase
+  (Google or an email link) and sends the access token with every `/api` call.
+- **Apache** serves `/opt/family-tree/app` and passes `/api/*` to the API on `127.0.0.1:3000`, so the app and the API
+  share one address and need no CORS set-up. Relatives reach it through a Cloudflare Tunnel or port forwarding.
+- **API server** ([kudumbam-app](https://github.com/pbrajesh/kudumbam-app)): checks each token against Supabase's
+  public keys (no Supabase secret) and reads and writes the local PostgreSQL. All family data stays on the Pi.
+- **Backups:** `backup-db.sh` dumps the database every night at 03:30 into `/var/backups/family-tree` (14 days kept),
+  and `supabase-sync.sh` copies it daily at 16:00 IST into the private `familytree_backup` schema of the Supabase
+  Postgres. Both run from systemd timers; see [deploy/raspberry-pi/README.md](deploy/raspberry-pi/README.md#backups).
+
 ## Get the code
 
 The web app (this repository) and the API server ([kudumbam-app](https://github.com/pbrajesh/kudumbam-app)) are
