@@ -74,6 +74,10 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
   `install-update.sh` takes either zip or both; `rollback.sh [app|server]`. The Pi needs `unzip`.
   `install-update.sh` checks for `/usr/bin/node` (22.18+) and `npm` before changing anything when the API zip is
   given (the owner's first run on the Pi failed with "npm: not found").
+- 23 Oct 2026: daily off-site copy to Supabase Postgres: `deploy/raspberry-pi/supabase-sync.sh` +
+  `family-tree-supabase.{service,timer}` (16:00 Asia/Kolkata, as postgres). Plain `pg_dump` of `public`, moved into schema
+  `familytree_backup` (never `public`: Data API), replaced each run in one transaction. Connection string (session
+  pooler) in `/etc/family-tree/supabase.env` on the Pi, never in a package. Guide: "Off-site copy in Supabase".
 - 23 Oct 2026: **members linked to people** ("This is me" + owner approval). kudumbam-app migration 003 adds
   `tree_members.person_id` (approved) and `claimed_person_id` (pending), cleared when the person is deleted or a
   file is imported; routes `PUT/DELETE …/members/me/claim`, `DELETE …/members/me/person`, owners
