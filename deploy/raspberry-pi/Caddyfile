@@ -24,7 +24,7 @@
 
 	# The app: real files when they exist, otherwise index.html so links like /t/<id> and /privacy open directly.
 	handle {
-		root * /srv/family-tree/app
+		root * /opt/family-tree/app
 		try_files {path} /index.html
 		file_server
 

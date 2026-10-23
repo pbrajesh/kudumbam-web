@@ -9,7 +9,7 @@ your router) or through **port forwarding** on your router.
  relatives' browsers ──HTTPS──► Cloudflare ──tunnel──► cloudflared ─┐
                                                                      ▼            Raspberry Pi
                                    Caddy :80 ── /api/* ──► API :3000 (Node) ──► PostgreSQL (local socket)
-                                        └── everything else ──► /srv/family-tree/app (the built app)
+                                        └── everything else ──► /opt/family-tree/app (the built app)
 ```
 
 What you need: a **Raspberry Pi 4 or 5 with 2 GB+**, ideally booting from a **USB SSD** (a database wears out SD
@@ -75,7 +75,7 @@ mkdir -p ~/ft && tar -xzf ~/family-tree-<date>.tgz -C ~/ft
 sudo sh ~/ft/deploy/install-update.sh ~/family-tree-<date>.tgz
 ```
 
-This puts the API in `/opt/family-tree/server` and the app in `/srv/family-tree/app`.
+This puts the API in `/opt/family-tree/server` and the app in `/opt/family-tree/app`.
 
 ## 5. Settings for the API
 
