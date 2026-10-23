@@ -39,13 +39,12 @@ if [ -f /opt/family-tree/server/.env ]; then
   chmod 640 /opt/family-tree/server/.env
 fi
 
-# 3. The app (static files served by Caddy).
-install -d -m 755 /srv/family-tree
-rm -rf /srv/family-tree/app.new /srv/family-tree/app.old
-mv "$tmp/app" /srv/family-tree/app.new
-chmod -R u=rwX,go=rX /srv/family-tree/app.new
-if [ -d /srv/family-tree/app ]; then mv /srv/family-tree/app /srv/family-tree/app.old; fi
-mv /srv/family-tree/app.new /srv/family-tree/app
+# 3. The app (static files served by Caddy from /opt/family-tree/app).
+rm -rf /opt/family-tree/app.new /opt/family-tree/app.old
+mv "$tmp/app" /opt/family-tree/app.new
+chmod -R u=rwX,go=rX /opt/family-tree/app.new
+if [ -d /opt/family-tree/app ]; then mv /opt/family-tree/app /opt/family-tree/app.old; fi
+mv /opt/family-tree/app.new /opt/family-tree/app
 
 # 4. Restart and check (skipped on the very first install, before .env and the service exist).
 if [ -f /opt/family-tree/server/.env ] && systemctl list-unit-files family-tree-api.service >/dev/null 2>&1 \
