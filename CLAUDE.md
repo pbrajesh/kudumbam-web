@@ -65,6 +65,12 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
   run from a clean folder with production dependencies only. Production builds no longer inline critical CSS
   (`angular.json`), because its `onload` handler would be blocked by the CSP. DB access on the Pi is by local socket
   and peer auth: `postgresql://familytree@/familytree?host=/var/run/postgresql`.
+- 23 Oct 2026: the app is served from `/opt/family-tree/app` (was `/srv/…`). **Apache replaces Caddy** (already on
+  the owner's Pi): `deploy/raspberry-pi/family-tree.apache.conf` (same headers, SPA fallback, `/api` proxy, log
+  without query strings), tested with Apache 2.4 against the real build and API. **Two zips**: this repo's
+  `package.ps1` → `kudumbam-web-<date>.zip` (`app/` + `deploy/`); kudumbam-app's `deploy/package.ps1` →
+  `kudumbam-app-<date>.zip` (`server/`). No `.env` (not even `.env.example`), data or backups in either.
+  `install-update.sh` takes either zip or both; `rollback.sh [app|server]`. The Pi needs `unzip`.
 - **Next:** the owner sets up the Pi following `deploy/raspberry-pi/README.md` (needs: Pi OS Lite 64-bit,
   a domain on Cloudflare for the tunnel, Supabase Site URL change). Small follow-up: tree-page header buttons wrap to
   three rows on phones. Still to decide: product name.

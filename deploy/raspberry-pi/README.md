@@ -1,14 +1,14 @@
 # Running the family tree on a Raspberry Pi (headless)
 
-Everything runs on the Pi: **PostgreSQL** (the data), the **API** (Node, a systemd service) and **Caddy**, which
-serves the app and passes `/api` to the API — one address, so no CORS set-up is needed. Supabase still does
+Everything runs on the Pi: **PostgreSQL** (the data), the **API** (Node, a systemd service) and **Apache** (already
+installed on the Pi), which serves the app and passes `/api` to the API — one address, so no CORS set-up is needed. Supabase still does
 sign-in. Relatives reach the Pi from the internet through a **Cloudflare Tunnel** (recommended: nothing is opened on
 your router) or through **port forwarding** on your router.
 
 ```
  relatives' browsers ──HTTPS──► Cloudflare ──tunnel──► cloudflared ─┐
                                                                      ▼            Raspberry Pi
-                                   Caddy :80 ── /api/* ──► API :3000 (Node) ──► PostgreSQL (local socket)
+                                  Apache :80 ── /api/* ──► API :3000 (Node) ──► PostgreSQL (local socket)
                                         └── everything else ──► /opt/family-tree/app (the built app)
 ```
 
@@ -35,12 +35,13 @@ Commands in grey boxes run **on the Pi** over SSH unless the step says "on your 
    sudo dpkg-reconfigure -plow unattended-upgrades   # answer Yes
    ```
 
-## 2. Install PostgreSQL, Caddy and Node
+## 2. Install PostgreSQL and Node
+
+Apache is already on the Pi; check it is 2.4 (`apache2 -v`).
 
 ```sh
-sudo apt install -y postgresql caddy curl
+sudo apt install -y postgresql curl unzip
 psql --version        # 15 or newer
-caddy version         # 2.6 or newer
 
 curl -fsSL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh
 sudo bash nodesource_setup.sh
@@ -59,23 +60,34 @@ sudo -u postgres createuser familytree
 sudo -u postgres createdb --owner familytree familytree
 ```
 
-## 4. Copy the app to the Pi
+## 4. Copy the app and the API to the Pi
 
-**On your PC** (PowerShell, in the project folder):
+The app and the API are separate repositories, so each one is built and packed on its own, into its own zip. Neither
+zip contains `.env` files, the `data/` folder, the local database or backups.
+
+**On your PC** (PowerShell), in the web app folder (kudumbam-web) and in the API folder (kudumbam-app, cloned into
+`server/`):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy\raspberry-pi\package.ps1
-scp deploy\out\family-tree-<date>.tgz <user>@familytree.local:
+powershell -ExecutionPolicy Bypass -File deploy\raspberry-pi\package.ps1     # in kudumbam-web: builds the app
+cd server
+powershell -ExecutionPolicy Bypass -File deploy\package.ps1                   # in kudumbam-app: checks and packs the API
+cd ..
+scp deploy\out\kudumbam-web-<date>.zip server\deploy\out\kudumbam-app-<date>.zip <user>@familytree.local:
 ```
+
+- `kudumbam-web-<date>.zip`: `app/` (the built app) and `deploy/` (these Pi files: scripts, services, Apache site)
+- `kudumbam-app-<date>.zip`: `server/` (the API code: `src`, `migrations`, `scripts`, `package.json`, lock file)
 
 **On the Pi:**
 
 ```sh
-mkdir -p ~/ft && tar -xzf ~/family-tree-<date>.tgz -C ~/ft
-sudo sh ~/ft/deploy/install-update.sh ~/family-tree-<date>.tgz
+mkdir -p ~/ft && unzip -o -q ~/kudumbam-web-<date>.zip 'deploy/*' -d ~/ft
+sudo sh ~/ft/deploy/install-update.sh ~/kudumbam-web-<date>.zip ~/kudumbam-app-<date>.zip
 ```
 
-This puts the API in `/opt/family-tree/server` and the app in `/opt/family-tree/app`.
+This puts the API in `/opt/family-tree/server`, the app in `/opt/family-tree/app` and the Pi files in
+`/opt/family-tree/deploy`.
 
 ## 5. Settings for the API
 
@@ -87,7 +99,7 @@ sudo nano /opt/family-tree/server/.env
 DATABASE_URL=postgresql://familytree@/familytree?host=/var/run/postgresql
 SUPABASE_URL=https://vyzygojjbhxqcpknasmm.supabase.co
 PORT=3000
-# Caddy alone in front: 1.  Cloudflare Tunnel + Caddy: 2.
+# Apache alone in front: 1.  Cloudflare Tunnel + Apache: 2.
 TRUST_PROXY=2
 CORS_ORIGINS=
 MAX_TREES_PER_USER=5
@@ -113,14 +125,20 @@ journalctl -u family-tree-api -n 20             # "Family tree API listening on 
 
 The first start creates the tables.
 
-## 7. Caddy
+## 7. Apache
 
 ```sh
-sudo cp /opt/family-tree/deploy/Caddyfile /etc/caddy/Caddyfile
-sudo install -d -o caddy -g caddy /var/log/caddy
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+sudo a2enmod proxy proxy_http headers
+sudo cp /opt/family-tree/deploy/family-tree.apache.conf /etc/apache2/sites-available/family-tree.conf
+sudo nano /etc/apache2/sites-available/family-tree.conf     # ServerName: your address from step 8, e.g. family.example.com
+sudo a2ensite family-tree
+sudo apache2ctl configtest                                   # Syntax OK
+sudo systemctl reload apache2
 ```
+
+Apache chooses a site by the name in the address, so other sites it already serves keep working. If this Apache
+serves nothing else, turn off its default page so any address reaches the family tree: `sudo a2dissite 000-default
+&& sudo systemctl reload apache2`.
 
 Open **http://familytree.local** from a computer on your home network: you should see the sign-in page, and
 **http://familytree.local/privacy** the privacy page.
@@ -136,15 +154,16 @@ Cloudflare (free plan is enough).
    `familytree`. Choose **Debian / arm64**: it shows commands that install `cloudflared` and run it as a service with
    your tunnel's token — run them on the Pi.
 2. In the tunnel's **Public hostnames**, add e.g. `family.example.com` → service **HTTP** `localhost:80`.
-3. Keep `TRUST_PROXY=2` (step 5). Caddy's `:80` line stays as it is.
+3. Keep `TRUST_PROXY=2` (step 5), and set `ServerName` in the Apache site (step 7) to that hostname.
 
 ### Option B — port forwarding
 
 1. Get a name for your home connection (your own domain, or a free one from e.g. DuckDNS, kept up to date by its
    updater script).
 2. On your router, forward TCP **80** and **443** to the Pi.
-3. In `/etc/caddy/Caddyfile`, replace `:80` with your name (e.g. `family.example.com`) and `sudo systemctl reload
-   caddy` — Caddy gets and renews the HTTPS certificate itself.
+3. Set `ServerName` in the Apache site (step 7) to your name (e.g. `family.example.com`), then get an HTTPS
+   certificate, renewed automatically: `sudo apt install -y certbot python3-certbot-apache && sudo certbot --apache
+   -d family.example.com` (let it redirect HTTP to HTTPS).
 4. Set `TRUST_PROXY=1` in `.env` and `sudo systemctl restart family-tree-api`.
 5. Firewall: `sudo apt install -y ufw && sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw enable`
 
@@ -163,19 +182,22 @@ built-in email only sends a few sign-in emails per hour.
 Sign in at your new address. On the My trees page, **Start your family tree**, then use **Import a .ged file** with
 `data/My-Family-16-Feb-2020-564.ged` (or an export of your local copy), choose **Settings → Father's given name**,
 and invite relatives from **Members**. Read **/privacy** first and, if you like, set `privacyContact` in
-`src/environments/environment.production.ts` (then repackage, step 11).
+`src/environments/environment.production.ts` (then repackage the app, step 11).
 
 ## 11. Updating
 
-**On your PC:** `powershell -ExecutionPolicy Bypass -File deploy\raspberry-pi\package.ps1`, then `scp` the new
-package. **On the Pi:**
+**On your PC:** pack what changed, as in step 4 (the app, the API, or both), and `scp` the zip(s). **On the Pi:**
 
 ```sh
-sudo sh /opt/family-tree/deploy/install-update.sh ~/family-tree-<date>.tgz
+sudo sh /opt/family-tree/deploy/install-update.sh ~/kudumbam-web-<date>.zip     # the app
+sudo sh /opt/family-tree/deploy/install-update.sh ~/kudumbam-app-<date>.zip     # the API
+sudo sh /opt/family-tree/deploy/install-update.sh ~/kudumbam-web-<date>.zip ~/kudumbam-app-<date>.zip   # both
 ```
 
-It backs up the database, installs the new version, restarts the API and checks it. If something is wrong:
-`sudo sh /opt/family-tree/deploy/rollback.sh` (the database is not rolled back — see below).
+For the API it backs up the database first, then installs the new version, restarts the API and checks it. If
+something is wrong: `sudo sh /opt/family-tree/deploy/rollback.sh app`, `… rollback.sh server`, or `… rollback.sh`
+for both (the database is not rolled back — see below). If an update changes `family-tree.apache.conf`, copy it
+again as in step 7 (keeping your `ServerName`).
 
 ## Backups
 
@@ -201,16 +223,16 @@ sudo systemctl start family-tree-api
 |---|---|
 | API status / logs | `systemctl status family-tree-api` · `journalctl -u family-tree-api -f` |
 | Restart the API | `sudo systemctl restart family-tree-api` |
-| Web server logs | `sudo tail -f /var/log/caddy/family-tree.log` |
+| Web server logs | `sudo tail -f /var/log/apache2/family-tree.log` (errors: `family-tree-error.log`) |
 | Trees and members | `cd /opt/family-tree/server && sudo -u familytree node --env-file=.env scripts/member.ts trees` |
 | Database shell | `sudo -u postgres psql familytree` |
 
 ## Security notes
 
-- Only Caddy (port 80, or 80/443 with option B) and SSH are reachable; the API listens on `127.0.0.1:3000`,
+- Only Apache (port 80, or 80/443 with option B) and SSH are reachable; the API listens on `127.0.0.1:3000`,
   PostgreSQL on the local socket only.
 - Use SSH keys and turn off password log-in (`PasswordAuthentication no` in `/etc/ssh/sshd_config`) once keys work.
 - The API runs as an unprivileged user with a read-only view of the system (see `family-tree-api.service`).
-- Caddy sends a strict Content Security Policy: only this site's code runs, and it may only talk to this site and to
-  your Supabase project. If you change Supabase projects, update that address in the Caddyfile.
+- Apache sends a strict Content Security Policy: only this site's code runs, and it may only talk to this site and
+  to your Supabase project. If you change Supabase projects, update that address in the Apache site.
 - Access logs leave out sign-in tokens and the email typed when deleting an account.

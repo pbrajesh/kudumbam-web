@@ -230,7 +230,7 @@ Each phase ends with the API tests passing and an end-to-end check in the browse
 2. **Product name:** keep "Kudumbam" (`environment.appName`) or choose another for the public site?
 3. ~~**Invitation emails:**~~ **Copy-a-message** for now (built in phase 3); site-sent emails can come later.
 4. ~~**Hosting:**~~ **A headless Raspberry Pi** (decided 23 Oct 2026): PostgreSQL, the API and the app on the Pi
-   behind Caddy; Cloudflare Tunnel (or port forwarding) for internet access. Guide: `deploy/raspberry-pi/README.md`.
+   behind Apache (Caddy at first); Cloudflare Tunnel (or port forwarding) for internet access. Guide: `deploy/raspberry-pi/README.md`.
 
 ## Not in this plan
 
