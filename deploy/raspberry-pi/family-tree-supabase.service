@@ -1,4 +1,4 @@
-# Runs supabase-sync.sh once: copies the database to Supabase. Started every night by family-tree-supabase.timer.
+# Runs supabase-sync.sh once: copies the database to Supabase. Started every day at 16:00 IST by family-tree-supabase.timer.
 # The Supabase connection string is in /etc/family-tree/supabase.env (root:postgres, mode 640), see the guide.
 # Result: journalctl -u family-tree-supabase -n 20
 [Unit]

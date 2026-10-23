@@ -213,7 +213,7 @@ again as in step 7 (keeping your `ServerName`).
 - **Copy them off the Pi** regularly — a backup on the same card or disk does not survive it failing. For example,
   from your PC: `scp <user>@familytree.local:/var/backups/family-tree/*.dump D:\family-tree-backups\`
   (first `sudo chmod o+rx /var/backups/family-tree && sudo chmod o+r /var/backups/family-tree/*.dump`, or copy them
-  with `sudo` to your home folder). The nightly copy to Supabase (below) does this automatically for the latest state.
+  with `sudo` to your home folder). The daily copy to Supabase (below) does this automatically for the latest state.
 - Check the timer: `systemctl list-timers family-tree-backup.timer`; run one now:
   `sudo systemctl start family-tree-backup`.
 
@@ -227,7 +227,7 @@ sudo systemctl start family-tree-api
 
 ### Off-site copy in Supabase
 
-Every night at 04:00 (after the local backup), `supabase-sync.sh` copies the whole database to your Supabase
+Every day at 4 PM India time (16:00 IST, whatever time zone the Pi uses), `supabase-sync.sh` copies the whole database to your Supabase
 project's PostgreSQL database, so a copy survives the Pi failing. Each run **replaces** the previous copy; the
 dated `.dump` files on the Pi stay the history. The copy goes into its own schema, `familytree_backup`, never
 `public` (which Supabase's Data API exposes to browsers), and the run is one transaction: if it fails half way, the
@@ -261,9 +261,9 @@ previous copy is kept.
 
 In the Supabase **Table Editor** the copy appears under the schema `familytree_backup`. Do not add that schema to
 **Exposed schemas** (Project Settings → Data API): that would let the website's public key read it. Check the
-timer with `systemctl list-timers family-tree-supabase.timer`; a failed night shows in
+timer with `systemctl list-timers family-tree-supabase.timer`; a failed run shows in
 `systemctl status family-tree-supabase` and the journal. Supabase's free plan pauses projects that sit idle for a week;
-the nightly copy should keep it active, but if the dashboard ever shows it paused, restore it there.
+the daily copy should keep it active, but if the dashboard ever shows it paused, restore it there.
 
 **Restore from Supabase** (only if the Pi's own `.dump` files are lost too). `pg_dump` must be at least as new as
 Supabase's PostgreSQL (see **Project Settings → Infrastructure**); if the Pi's is older, install a newer

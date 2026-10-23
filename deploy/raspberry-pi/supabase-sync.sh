@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copy the whole family tree database to a Supabase PostgreSQL database, as an off-Pi backup.
-# Run nightly by family-tree-supabase.timer as the postgres user; see "Off-site copy in Supabase" in the guide.
+# Run daily at 16:00 IST by family-tree-supabase.timer as the postgres user; see "Off-site copy in Supabase" in the guide.
 #   sudo systemctl start family-tree-supabase        # run once now
 #
 # Each run replaces the copy: the local tables go into the schema familytree_backup in Supabase (never public,
