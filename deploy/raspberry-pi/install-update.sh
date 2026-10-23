@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install or update the family tree on the Raspberry Pi from the packages made on your PC:
-#   kudumbam-web-<date>.zip   the app + these Pi files   (kudumbam-web:  deploy\raspberry-pi\package.ps1)
-#   kudumbam-app-<date>.zip   the API server             (kudumbam-app:  deploy\package.ps1)
+#   kudumbam-web-<date>.zip   the app + these Pi files   (kudumbam-web:  npm run build, then deploy/raspberry-pi/package.sh)
+#   kudumbam-app-<date>.zip   the API server             (kudumbam-app:  deploy/package.sh)
 #   sudo sh install-update.sh kudumbam-web-<date>.zip kudumbam-app-<date>.zip      (both, or either one)
 # - Backs up the database first when the API is updated (new versions may update its structure on start).
 # - Keeps server/.env, installs the API's production dependencies, swaps in the new API and/or app,
