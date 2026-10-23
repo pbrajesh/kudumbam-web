@@ -26,6 +26,8 @@ import { AuthService } from './auth.service';
           marriages and notes — about people who have died and about living people.</li>
         <li><strong>Who belongs to each tree</strong> and their role (viewer, editor or owner), and who last changed each
           person or family.</li>
+        <li><strong>Which person in a tree you are</strong>, if you choose “This is me” on a person (an owner confirms it)
+          or an owner links you. Other members of that tree can see it. You can remove it at any time with “This isn't me”.</li>
         <li><strong>In your browser only:</strong> your sign-in session, the tree you opened last and the person you last
           centred on. Nothing else is tracked: no advertising, no analytics, no tracking cookies.</li>
       </ul>

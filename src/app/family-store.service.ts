@@ -3,12 +3,15 @@ import {
   DEFAULT_SETTINGS, Family, Person, Sex, SurnameRule, TreeData, TreeSettings, displayName, emptyPerson,
 } from './models';
 import { parseGedcom, serializeGedcom } from './gedcom';
-import { ChangeSet, Role, TreeApi, TreeResponse, TreeSummary, Versions, messageOf, statusOf } from './tree-api.service';
+import {
+  ChangeSet, Role, TreeApi, TreeResponse, TreeSummary, Versions, YouInTree, YouResponse, messageOf, statusOf,
+} from './tree-api.service';
 
 /** Last tree this browser opened, and the person centred in each tree. Per-viewer conveniences only. */
 const TREE_KEY = 'family-tree:tree:v1';
 const focusKey = (treeId: string) => `family-tree:focus:${treeId}`;
 const HISTORY_LIMIT = 60;
+const NOBODY: YouInTree = { personId: null, claimedPersonId: null };
 
 /** State of the tree on screen. not-found: no such tree, or the user is not (or no longer) a member. */
 export type LoadState = 'idle' | 'loading' | 'ready' | 'not-found' | 'error';
@@ -57,6 +60,10 @@ export class FamilyStore {
   readonly statusMessage = signal('');
   readonly role = signal<Role | null>(null);
   readonly canEdit = computed(() => this.role() === 'editor' || this.role() === 'owner');
+  /** Who the signed-in user is in this tree (linked person, pending "This is me" claim). */
+  readonly you = signal<YouInTree>(NOBODY);
+  /** Owners: how many "This is me" claims are waiting for approval. */
+  readonly pendingClaims = signal(0);
   /** True while edits are on their way to the server. */
   readonly saving = signal(false);
   /** Latest save or load problem, for the app to show. */
@@ -83,6 +90,15 @@ export class FamilyStore {
     return id ? this.data().people[id] ?? null : null;
   });
   readonly focus = computed(() => this.data().people[this.focusId()] ?? null);
+  /** The person the signed-in user is linked to, if they are still in the tree. */
+  readonly me = computed(() => {
+    const id = this.you().personId;
+    return id ? this.data().people[id] ?? null : null;
+  });
+  readonly claimed = computed(() => {
+    const id = this.you().claimedPersonId;
+    return id ? this.data().people[id] ?? null : null;
+  });
 
   /* ---------- loading ---------- */
 
@@ -208,6 +224,8 @@ export class FamilyStore {
     this.data.set(emptyTree());
     this.versions = { people: {}, families: {} };
     this.role.set(null);
+    this.you.set(NOBODY);
+    this.pendingClaims.set(0);
     this.settings.set(DEFAULT_SETTINGS);
     this.fileName.set('');
     this.focusId.set('');
@@ -231,16 +249,59 @@ export class FamilyStore {
     this.fileName.set(r.fileName);
     this.settings.set(r.settings);
     this.role.set(r.role);
+    this.applyYou(r);
     this.past = [];
     this.future = [];
     this.syncHistory();
     const saved = readStore(focusKey(this.treeId() ?? ''));
-    // Keep the current view on a refresh; otherwise this viewer's last person, then the tree's home person.
-    const focus = [this.focusId(), saved, r.settings.homePersonId].find(id => id && r.data.people[id])
+    // Keep the current view on a refresh; otherwise yourself, this viewer's last person, then the home person.
+    const focus = [this.focusId(), r.you.personId, saved, r.settings.homePersonId].find(id => id && r.data.people[id])
       ?? r.data.order[0] ?? '';
     this.focusId.set(focus);
     const sel = this.selectedId();
     if (sel && !r.data.people[sel]) this.selectedId.set(null);
+  }
+
+  private applyYou(r: YouResponse) {
+    this.you.set(r.you);
+    this.pendingClaims.set(r.pendingClaims);
+  }
+
+  /* ---------- who you are in the tree ---------- */
+
+  /**
+   * "This is me" about a person. Owners are linked at once; others wait for an owner. Returns 'linked' or 'claimed',
+   * or null with a notice if the server refused (for example, someone else is already linked to that person).
+   */
+  async claimPerson(personId: string): Promise<'linked' | 'claimed' | null> {
+    const r = await this.youCall(id => this.api.claimPerson(id, personId), 'Not saved');
+    return r ? (r.you.personId === personId ? 'linked' : 'claimed') : null;
+  }
+  async withdrawClaim(): Promise<boolean> {
+    return !!(await this.youCall(id => this.api.withdrawClaim(id), 'Not taken back'));
+  }
+  async unlinkMe(): Promise<boolean> {
+    return !!(await this.youCall(id => this.api.unlinkMe(id), 'Not unlinked'));
+  }
+  private async youCall(fn: (treeId: string) => Promise<YouResponse>, failed: string): Promise<YouResponse | null> {
+    const treeId = this.treeId();
+    if (!treeId) return null;
+    try {
+      const r = await fn(treeId);
+      if (treeId === this.treeId()) this.applyYou(r);
+      return r;
+    } catch (e) {
+      this.notice.set({ text: `${failed}: ${messageOf(e)}`, error: true });
+      return null;
+    }
+  }
+
+  /** Centre the tree on yourself and open your card. */
+  findMe() {
+    const p = this.me();
+    if (!p) return;
+    this.setFocus(p.id);
+    this.selectedId.set(p.id);
   }
 
   /* ---------- relationships ---------- */
@@ -552,6 +613,14 @@ export class FamilyStore {
       this.pruneFamilies(d);
     });
     if (this.selectedId() === id) this.selectedId.set(null);
+    // The server drops a link or claim to a deleted person; undo brings the person back but not the link.
+    const you = this.you();
+    if (!this.data().people[id] && (you.personId === id || you.claimedPersonId === id)) {
+      this.you.set({
+        personId: you.personId === id ? null : you.personId,
+        claimedPersonId: you.claimedPersonId === id ? null : you.claimedPersonId,
+      });
+    }
     if (this.focusId() === id) {
       const d = this.data();
       this.focusId.set(d.order[0] ?? '');

@@ -1,4 +1,4 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { FamilyStore } from './family-store.service';
 import { Person, Sex, displayName, lifeSpan } from './models';
 
@@ -13,6 +13,7 @@ type TextField = 'given' | 'surname' | 'marriedName' | 'birthDate' | 'birthPlace
           <span class="ed-id">&#64;{{ p.id }}&#64;</span>
           <h2>{{ name(p) }}</h2>
           @if (span(p)) { <p class="ed-span">{{ span(p) }}</p> }
+          @if (store.you().personId === p.id) { <p class="ed-you">This is you</p> }
           @if (!store.canEdit()) { <p class="ed-span">View only</p> }
         </div>
         <button type="button" class="icon-btn" (click)="close()" aria-label="Close editor">✕</button>
@@ -27,6 +28,20 @@ type TextField = 'given' | 'surname' | 'marriedName' | 'birthDate' | 'birthPlace
         } @else if (store.canEdit()) {
           <button type="button" class="btn ghost" (click)="store.updateSettings({ homePersonId: p.id })"
                   title="The tree opens on this person for first-time visitors">Make home person</button>
+        }
+      </div>
+
+      <div class="ed-me">
+        @if (store.you().personId === p.id) {
+          <button type="button" class="btn small ghost" (click)="notMe()" [disabled]="busy()">This isn't me</button>
+        } @else if (store.you().claimedPersonId === p.id) {
+          <span class="tag">You said this is you · waiting for an owner to approve</span>
+          <button type="button" class="btn small ghost" (click)="takeBack()" [disabled]="busy()">Take back</button>
+        } @else {
+          <button type="button" class="btn small" (click)="thisIsMe(p.id)" [disabled]="busy()"
+                  [title]="store.role() === 'owner' ? 'Link your account to this person' : 'Ask an owner to link your account to this person'">
+            This is me</button>
+          @if (store.me(); as me) { <span class="tag">You are linked to {{ name(me) }}</span> }
         }
       </div>
 
@@ -194,6 +209,7 @@ export class PersonEditorComponent {
   readonly person = this.store.selected;
   readonly draft = linkedSignal<Person>(() => structuredClone(this.person() ?? emptyDraft()));
   readonly confirmDelete = linkedSignal<boolean>(() => { this.person(); return false; });
+  readonly busy = signal(false);
 
   readonly changed = computed(() => {
     const p = this.person();
@@ -267,6 +283,20 @@ export class PersonEditorComponent {
     sel.value = '';
   }
   remove(id: string) { this.store.deletePerson(id); }
+
+  async thisIsMe(id: string) {
+    await this.whileBusy(async () => {
+      const r = await this.store.claimPerson(id);
+      if (r === 'claimed') this.store.notice.set({ text: "Sent. An owner of this tree will confirm it's you.", error: false });
+      else if (r === 'linked') this.store.notice.set({ text: "Done. The tree now marks this person as you.", error: false });
+    });
+  }
+  async takeBack() { await this.whileBusy(() => this.store.withdrawClaim()); }
+  async notMe() { await this.whileBusy(() => this.store.unlinkMe()); }
+  private async whileBusy(fn: () => Promise<unknown>) {
+    this.busy.set(true);
+    try { await fn(); } finally { this.busy.set(false); }
+  }
 }
 
 function emptyDraft(): Person {

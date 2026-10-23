@@ -83,6 +83,11 @@ switches between them. A tree is visible only to its members. Owners can rename 
 **Inviting relatives:** an owner opens **Members**, adds the person's email and a role, and sends them the
 ready-made message it shows (WhatsApp, email…). They get access the first time they sign in with that address.
 Owners can change roles or remove people there; anyone can leave a tree (except its only owner).
+
+**Finding yourself in the tree:** a member opens their own card and chooses **This is me**. An owner sees the claim
+in **Members** (with a count on the button) and approves or turns it down; owners can also link any member to a
+person there, and are linked straight away when they choose This is me themselves. Once linked, the tree opens on
+you, your card is marked **You**, and **Find me** jumps back to it. Each person can be linked to one member per tree.
 The command-line script below does the same from the server:
 
 ```bash

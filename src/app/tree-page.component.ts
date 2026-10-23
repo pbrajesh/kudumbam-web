@@ -71,7 +71,11 @@ import { readFileAsText, saveTextFile } from './file-io';
           </label>
           <button type="button" class="btn ghost" (click)="openSettings()">Settings</button>
         }
-        <button type="button" class="btn ghost" (click)="membersOpen.set(true)">Members</button>
+        <button type="button" class="btn ghost" (click)="membersOpen.set(true)">Members
+          @if (store.pendingClaims()) {
+            <span class="count" [attr.aria-label]="store.pendingClaims() + ' waiting for approval'">{{ store.pendingClaims() }}</span>
+          }
+        </button>
         <button type="button" class="btn primary" (click)="openExport()" [disabled]="!store.people().length">Export .ged</button>
         <button type="button" class="btn ghost" (click)="auth.signOut()">Sign out</button>
       </nav>
@@ -96,7 +100,7 @@ import { readFileAsText, saveTextFile } from './file-io';
               <button type="button" class="person-row" [class.focus]="p.id === store.focusId()"
                       [class.selected]="p.id === store.selectedId()" (click)="pick(p)">
                 <span class="dot sex-{{ p.sex }}" aria-hidden="true"></span>
-                <span class="pr-name">{{ name(p) }}</span>
+                <span class="pr-name">{{ name(p) }}@if (p.id === store.you().personId) { <span class="pr-you">you</span> }</span>
                 <span class="pr-meta">{{ span(p) || '@' + p.id + '@' }}</span>
               </button>
             </li>
@@ -114,8 +118,11 @@ import { readFileAsText, saveTextFile } from './file-io';
         <div class="canvas-bar">
           <div class="focus-label">
             <span class="eyebrow">Centred on</span>
-            <strong>{{ name(store.focus()) }}</strong>
+            <strong>{{ name(store.focus()) }}@if (store.focusId() && store.focusId() === store.you().personId) { <span class="muted"> (you)</span> }</strong>
           </div>
+          @if (store.me()) {
+            <button type="button" class="btn small" (click)="store.findMe()" [disabled]="store.focusId() === store.you().personId">Find me</button>
+          }
           <label for="anc-depth">Ancestors
             <select id="anc-depth" [value]="store.ancestorDepth()" (change)="store.ancestorDepth.set(num($event))">
               @for (n of depths; track n) { <option [value]="n" [selected]="n === store.ancestorDepth()">{{ n }}</option> }
@@ -126,6 +133,17 @@ import { readFileAsText, saveTextFile } from './file-io';
               @for (n of depths; track n) { <option [value]="n" [selected]="n === store.descendantDepth()">{{ n }}</option> }
             </select>
           </label>
+          @if (store.people().length && !store.me() && !hideYouHint()) {
+            <p class="you-hint" role="status">
+              @if (store.claimed(); as c) {
+                You said you are <strong>{{ name(c) }}</strong>. An owner of this tree still has to confirm it.
+              } @else {
+                You're not linked to anyone in this tree yet. Find yourself in the list, open your card and choose
+                <strong>This is me</strong>{{ store.role() === 'owner' ? '' : ' — an owner will confirm it' }}.
+              }
+              <button type="button" class="icon-btn small" (click)="hideYouHint.set(true)" aria-label="Hide this message">✕</button>
+            </p>
+          }
         </div>
         @if (store.people().length) {
           <app-tree-view />
@@ -268,6 +286,8 @@ export class TreePageComponent {
   readonly surnameRules = SURNAME_RULES;
   readonly createOpen = signal(false);
   readonly membersOpen = signal(false);
+  /** The "you're not linked yet" hint, hidden until the next tree is opened. */
+  readonly hideYouHint = signal(false);
   readonly nameDraft = signal('');
   readonly deleteDraft = signal('');
   readonly deleting = signal(false);
@@ -290,6 +310,7 @@ export class TreePageComponent {
     // The tree comes from the URL, so links to /t/<id> can be shared and bookmarked.
     inject(ActivatedRoute).paramMap.pipe(takeUntilDestroyed()).subscribe(p => {
       this.closeDialogs();
+      this.hideYouHint.set(false);
       void this.store.openTree(p.get('treeId') ?? '');
     });
     const title = inject(Title);
