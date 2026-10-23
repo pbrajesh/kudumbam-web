@@ -66,7 +66,7 @@ export class TreeViewComponent {
       const data = this.store.data();
       const focus = this.store.focusId();
       const layout = computeLayout(data, focus, this.store.ancestorDepth(), this.store.descendantDepth());
-      this.render(layout.cards, layout.links, this.store.selectedId());
+      this.render(layout.cards, layout.links, this.store.selectedId(), this.store.you().personId);
       this.focusCenter = layout.focusCenter;
       if (focus !== this.lastFocus) {
         const first = !this.lastFocus;
@@ -89,7 +89,10 @@ export class TreeViewComponent {
     else this.svg.call(this.zoom.transform, t);
   }
 
-  private render(cards: CardBox[], links: { key: string; path: string; kind: string; former?: boolean }[], selectedId: string | null) {
+  private render(
+    cards: CardBox[], links: { key: string; path: string; kind: string; former?: boolean }[],
+    selectedId: string | null, youId: string | null,
+  ) {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const dur = reduce ? 0 : 420;
 
@@ -118,6 +121,7 @@ export class TreeViewComponent {
           g.append('text').attr('class', 'name').attr('x', 36).attr('y', 26).attr('clip-path', 'url(#card-clip)');
           g.append('text').attr('class', 'meta').attr('x', 36).attr('y', 44);
           g.append('text').attr('class', 'more').attr('x', CARD_W - 10).attr('y', 18).attr('text-anchor', 'end');
+          g.append('text').attr('class', 'you-mark').attr('x', CARD_W - 10).attr('y', CARD_H - 9).attr('text-anchor', 'end');
           g.append('title');
           g.call(e => e.transition().duration(dur).attr('opacity', 1));
           return g;
@@ -132,8 +136,10 @@ export class TreeViewComponent {
         'card', d.role, `sex-${d.person.sex}`,
         d.person.deceased ? 'deceased' : '',
         d.person.id === selectedId ? 'selected' : '',
+        d.person.id === youId ? 'you' : '',
       ].join(' '))
-      .attr('aria-label', d => `${displayName(d.person)}${lifeSpan(d.person) ? ', ' + lifeSpan(d.person) : ''}`)
+      .attr('aria-label', d => `${displayName(d.person)}${d.person.id === youId ? ' (you)' : ''}`
+        + `${lifeSpan(d.person) ? ', ' + lifeSpan(d.person) : ''}`)
       .on('click', (ev: MouseEvent, d) => { ev.stopPropagation(); this.store.select(d.person.id); })
       .on('dblclick', (ev: MouseEvent, d) => { ev.stopPropagation(); this.store.setFocus(d.person.id); this.store.select(d.person.id); })
       .on('keydown', (ev: KeyboardEvent, d) => {
@@ -145,6 +151,7 @@ export class TreeViewComponent {
     cardSel.select('text.name').text(d => truncate(displayName(d.person), 19));
     cardSel.select('text.meta').text(d => lifeSpan(d.person) || `@${d.person.id}@`);
     cardSel.select('text.more').text(d => (d.more && d.role !== 'focus' ? '+' : ''));
+    cardSel.select('text.you-mark').text(d => (d.person.id === youId ? 'You' : ''));
     cardSel.select('title').text(d =>
       `${displayName(d.person)} (@${d.person.id}@)\nClick to edit · double-click to centre the tree here`);
   }
