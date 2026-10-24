@@ -147,8 +147,8 @@ npm run member -- list
 
 A **Help** page (`/help`, open without signing in) explains all of this for family members and for tree owners;
 the header of every page links to it. A two-minute screen recording of the app with a made-up family is attached
-to the [Walkthrough video release](https://github.com/pbrajesh/kudumbam-web/releases/tag/walkthrough-video)
-([download the MP4](https://github.com/pbrajesh/kudumbam-web/releases/download/walkthrough-video/kudumbam-walkthrough.mp4)).
+to the [Walkthrough video release](https://github.com/pbrajesh/kudumbam-web/releases/tag/v1)
+([download the MP4](https://github.com/pbrajesh/kudumbam-web/releases/download/v1/kudumbam-walkthrough.mp4)).
 
 - **Tree**: hourglass view. Ancestors of the centred person above, descendants with their spouses below.
   Click a card to open it; double-click (or Enter) to centre the tree on that person. Drag to pan, scroll to zoom.
