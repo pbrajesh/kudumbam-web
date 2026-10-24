@@ -9,6 +9,8 @@ keep_days=14
 stamp=$(date +%Y-%m-%d)
 
 mkdir -p "$dir"
+# Work in the backup folder: when run with sudo from a home folder, postgres cannot go back there (find fails).
+cd "$dir"
 # Custom format: compressed, and restorable with pg_restore (see the guide).
 pg_dump --format=custom --file="$dir/familytree-$stamp.dump.tmp" familytree
 mv "$dir/familytree-$stamp.dump.tmp" "$dir/familytree-$stamp.dump"

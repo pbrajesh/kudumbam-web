@@ -49,11 +49,14 @@ if [ "$here" != /opt/family-tree/deploy ]; then
   chmod -R u=rwX,go=rX /opt/family-tree/deploy
 fi
 
-# 2. Back up the database before anything changes.
-if sudo -u postgres psql -lqt | cut -d'|' -f1 | grep -qw familytree; then
+# 2. Back up the database before anything changes. Only these two commands run as postgres (sudo -u runs one
+# command and comes back); they start in / because postgres cannot enter your home folder, and a backup that
+# fails there would stop the install.
+if (cd / && sudo -u postgres psql -lqt) | cut -d'|' -f1 | grep -qw familytree; then
   install -d -o postgres -g postgres -m 750 /var/backups/family-tree
-  sudo -u postgres sh /opt/family-tree/deploy/backup-db.sh
+  (cd / && sudo -u postgres sh /opt/family-tree/deploy/backup-db.sh)
 fi
+echo "Installing the API's production packages (npm ci): the zip has only its code, not node_modules."
 
 # 3. New code + existing settings, production dependencies only.
 if [ -f /opt/family-tree/server/.env ]; then cp -p /opt/family-tree/server/.env "$tmp/server/.env"; fi
