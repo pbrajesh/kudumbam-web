@@ -71,9 +71,11 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
   `deploy/raspberry-pi/package.sh` → `kudumbam-web-<date>.zip` (`app/` + `deploy/`); kudumbam-app's
   `deploy/package.sh` → `kudumbam-app-<date>.zip` (`server/`). Both are bash (PowerShell dropped) and do not build:
   the owner runs `npm run build` first. They zip with `zip`, or Python when `zip` is missing (Git Bash). No `.env` (not even `.env.example`), data or backups in either.
-  `install-update.sh` takes either zip or both; `rollback.sh [app|server]`. The Pi needs `unzip`.
-  `install-update.sh` checks for `/usr/bin/node` (22.18+) and `npm` before changing anything when the API zip is
-  given (the owner's first run on the Pi failed with "npm: not found").
+  The install is split in two (24 Oct 2026): `install-server.sh <app zip>` (checks `/usr/bin/node` 22.18+ and `npm`
+  before changing anything — the owner's first run failed with "npm: not found" — copies the Pi files next to it to
+  `/opt/family-tree/deploy`, backs up the DB, installs the API) and `install-web.sh <web zip>` (Pi files + app, no
+  Node). Both ship in the web zip's `deploy/`; on a new Pi the API goes first. `rollback.sh [app|server]`. The Pi
+  needs `unzip`.
 - 23 Oct 2026: daily off-site copy to Supabase Postgres: `deploy/raspberry-pi/supabase-sync.sh` +
   `family-tree-supabase.{service,timer}` (16:00 Asia/Kolkata, as postgres). Plain `pg_dump` of `public`, moved into schema
   `familytree_backup` (never `public`: Data API), replaced each run in one transaction. Connection string (session
