@@ -11,7 +11,7 @@ import { AuthService } from './auth.service';
   template: `
     <header class="topbar">
       <div class="brand"><h1><a class="home-link" routerLink="/">{{ appName }}</a></h1></div>
-      <nav class="actions"><a class="btn ghost" routerLink="/">{{ auth.session() ? 'My trees' : 'Sign in' }}</a></nav>
+      <nav class="actions"><a class="btn ghost" routerLink="/help">Help</a><a class="btn ghost" routerLink="/">{{ auth.session() ? 'My trees' : 'Sign in' }}</a></nav>
     </header>
     <main class="prose">
       <h2>Privacy</h2>

@@ -36,7 +36,7 @@ import { saveReturnUrl } from './return-url';
           }
           @if (error()) { <p class="gate-error" role="alert">{{ error() }}</p> }
         }
-        <p class="muted small"><a routerLink="/privacy">Privacy: what is stored and who can see it</a></p>
+        <p class="muted small"><a routerLink="/help">Help</a> · <a routerLink="/privacy">Privacy: what is stored and who can see it</a></p>
       </div>
     </main>
   `,
