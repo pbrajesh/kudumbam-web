@@ -74,7 +74,9 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
   The install is split in two (24 Oct 2026): `install-server.sh <app zip>` (checks `/usr/bin/node` 22.18+ and `npm`
   before changing anything — the owner's first run failed with "npm: not found" — copies the Pi files next to it to
   `/opt/family-tree/deploy`, backs up the DB, installs the API) and `install-web.sh <web zip>` (Pi files + app, no
-  Node). Both ship in the web zip's `deploy/`; on a new Pi the API goes first. `rollback.sh [app|server]`. The Pi
+  Node). Both ship in the web zip's `deploy/`; on a new Pi the API goes first. Postgres steps run from `/`
+  (`cd /` before `sudo -u postgres`; `backup-db.sh` cds to the backup folder): run from a home folder, `find` in the
+  backup failed with "Failed to restore initial working directory" and stopped the install. `rollback.sh [app|server]`. The Pi
   needs `unzip`.
 - 23 Oct 2026: daily off-site copy to Supabase Postgres: `deploy/raspberry-pi/supabase-sync.sh` +
   `family-tree-supabase.{service,timer}` (16:00 Asia/Kolkata, as postgres). Plain `pg_dump` of `public`, moved into schema
