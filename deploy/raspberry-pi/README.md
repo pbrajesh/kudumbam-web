@@ -53,7 +53,7 @@ npm --version         # comes with nodejs from NodeSource
 Install Node this way, for the whole system: the API service runs `/usr/bin/node`, and the install script runs
 `npm` with sudo. A Node installed only for your user (nvm, or a download in your home folder) is not seen by either,
 and Raspberry Pi OS's own `nodejs` package (without the NodeSource step) is too old and has no npm.
-`install-update.sh` checks this before changing anything and stops with these instructions if Node or npm is missing.
+`install-server.sh` checks this before changing anything and stops with these instructions if Node or npm is missing.
 
 ## 3. Create the database
 
@@ -87,15 +87,20 @@ scp deploy/out/kudumbam-web-<date>.zip server/deploy/out/kudumbam-app-<date>.zip
 - `kudumbam-web-<date>.zip`: `app/` (the built app) and `deploy/` (these Pi files: scripts, services, Apache site)
 - `kudumbam-app-<date>.zip`: `server/` (the API code: `src`, `migrations`, `scripts`, `package.json`, lock file)
 
-**On the Pi:**
+**On the Pi**, install the API first, then the app. There is one install script for each zip; both come in the
+web zip's `deploy/` folder, so unpack that first:
 
 ```sh
 mkdir -p ~/ft && unzip -o -q ~/kudumbam-web-<date>.zip 'deploy/*' -d ~/ft
-sudo sh ~/ft/deploy/install-update.sh ~/kudumbam-web-<date>.zip ~/kudumbam-app-<date>.zip
+sudo sh ~/ft/deploy/install-server.sh ~/kudumbam-app-<date>.zip    # 1. the API
+sudo sh ~/ft/deploy/install-web.sh ~/kudumbam-web-<date>.zip       # 2. the app
 ```
 
-This puts the API in `/opt/family-tree/server`, the app in `/opt/family-tree/app` and the Pi files in
-`/opt/family-tree/deploy`.
+- `install-server.sh` first checks for Node.js 22.18+ and npm (step 2) and stops before changing anything if they
+  are missing. It then copies the Pi files to `/opt/family-tree/deploy`, backs up the database, and puts the API in
+  `/opt/family-tree/server` with its production dependencies.
+- `install-web.sh` puts the app in `/opt/family-tree/app` and the Pi files in `/opt/family-tree/deploy`. It needs
+  no Node.
 
 ## 5. Settings for the API
 
@@ -194,15 +199,17 @@ and invite relatives from **Members**. Read **/privacy** first and, if you like,
 
 ## 11. Updating
 
-**On your PC:** pack what changed, as in step 4 (the app, the API, or both), and `scp` the zip(s). **On the Pi:**
+**On your PC:** pack what changed, as in step 4 (the app, the API, or both), and `scp` the zip(s). **On the Pi**,
+when both changed, update the API first:
 
 ```sh
-sudo sh /opt/family-tree/deploy/install-update.sh ~/kudumbam-web-<date>.zip     # the app
-sudo sh /opt/family-tree/deploy/install-update.sh ~/kudumbam-app-<date>.zip     # the API
-sudo sh /opt/family-tree/deploy/install-update.sh ~/kudumbam-web-<date>.zip ~/kudumbam-app-<date>.zip   # both
+sudo sh /opt/family-tree/deploy/install-server.sh ~/kudumbam-app-<date>.zip    # the API
+sudo sh /opt/family-tree/deploy/install-web.sh ~/kudumbam-web-<date>.zip       # the app
 ```
 
-For the API it backs up the database first, then installs the new version, restarts the API and checks it. If
+`install-server.sh` checks Node and npm, backs up the database, installs the new version, restarts the API and
+checks it. If the update also changes the Pi files (services, backup scripts), install the web zip too, or run
+`install-server.sh` from the newly unpacked `~/ft/deploy` as in step 4. If
 something is wrong: `sudo sh /opt/family-tree/deploy/rollback.sh app`, `… rollback.sh server`, or `… rollback.sh`
 for both (the database is not rolled back — see below). If an update changes `family-tree.apache.conf`, copy it
 again as in step 7 (keeping your `ServerName`).

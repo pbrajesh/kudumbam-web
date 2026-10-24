@@ -1,5 +1,5 @@
 #!/bin/sh
-# Go back to the version before the last install-update.sh.
+# Go back to the version before the last install-web.sh (app) or install-server.sh (server).
 #   sudo sh /opt/family-tree/deploy/rollback.sh            both the app and the API (whichever has a previous version)
 #   sudo sh /opt/family-tree/deploy/rollback.sh app        only the app
 #   sudo sh /opt/family-tree/deploy/rollback.sh server     only the API
