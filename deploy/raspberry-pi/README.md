@@ -69,8 +69,12 @@ sudo -u postgres createdb --owner familytree familytree
 ## 4. Copy the app and the API to the Pi
 
 The app and the API are separate repositories, so each one is packed on its own, into its own zip. Neither zip
-contains `.env` files, the `data/` folder, the local database or backups. The scripts do not build anything: run the
-app's build yourself first.
+contains `.env` files, the `data/` folder, the local database or backups.
+
+Only the **web app** needs a build, and you run it yourself on your PC (`npm run build`): it turns the Angular source
+into the static files Apache serves, and the Pi never gets the source. The **API** has no build: Node runs its `.ts`
+files as they are. The zip carries only the API's code, so `install-server.sh` runs `npm ci` on the Pi to download
+the API's production packages (Express, the PostgreSQL driver…) for the Pi itself. That is an install, not a build.
 
 **On your PC** (bash, e.g. Git Bash on Windows), in the web app folder (kudumbam-web) and in the API folder
 (kudumbam-app, cloned into `server/`). The scripts use `zip`, or Python when `zip` is not installed:
@@ -97,8 +101,9 @@ sudo sh ~/ft/deploy/install-web.sh ~/kudumbam-web-<date>.zip       # 2. the app
 ```
 
 - `install-server.sh` first checks for Node.js 22.18+ and npm (step 2) and stops before changing anything if they
-  are missing. It then copies the Pi files to `/opt/family-tree/deploy`, backs up the database, and puts the API in
-  `/opt/family-tree/server` with its production dependencies.
+  are missing. It then copies the Pi files to `/opt/family-tree/deploy`, backs up the database (only that step runs
+  as the postgres user; the script carries on as root), and puts the API in `/opt/family-tree/server` with its
+  production packages (`npm ci`).
 - `install-web.sh` puts the app in `/opt/family-tree/app` and the Pi files in `/opt/family-tree/deploy`. It needs
   no Node.
 
