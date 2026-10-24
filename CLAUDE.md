@@ -120,6 +120,8 @@ PostgreSQL API in `server/`; Supabase for sign-in only. See README.md for setup 
 - Routing (`app.routes.ts`): `/` → `trees-page.component.ts` (My trees, start a tree), `/t/:treeId` →
   `tree-page.component.ts` (header with tree picker, people list, tree view, editor, Settings / Members / Export /
   new-tree dialogs, not-found and error states), `**` → `/`.
+- `help-page.component.ts` — `/help` (public route): user guide for family members and tree owners. Keep it in step
+  with the features when they change. Linked from the tree page, My trees, sign-in and privacy pages.
 - `app.component.ts` — only the sign-in gate and `<router-outlet>`; clears the store on sign-out and restores the
   saved page on sign-in. `login.component.ts` — sign-in screen; saves the current page (`return-url.ts`).
 - `tree-layout.ts`, `tree-view.component.ts` — unchanged D3 hourglass layout and rendering.

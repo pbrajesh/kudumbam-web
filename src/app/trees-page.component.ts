@@ -18,6 +18,7 @@ const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', editor: 'Editor', vie
       <div class="brand"><h1>{{ appName }}</h1></div>
       <nav class="actions" aria-label="Account">
         <span class="muted signed-in-top">{{ auth.email() }}</span>
+        <a class="btn ghost" routerLink="/help">Help</a>
         <button type="button" class="btn ghost" (click)="auth.signOut()">Sign out</button>
       </nav>
     </header>

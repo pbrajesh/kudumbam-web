@@ -77,6 +77,7 @@ import { readFileAsText, saveTextFile } from './file-io';
           }
         </button>
         <button type="button" class="btn primary" (click)="openExport()" [disabled]="!store.people().length">Export .ged</button>
+        <a class="btn ghost" routerLink="/help" title="How to use the family tree">Help</a>
         <button type="button" class="btn ghost" (click)="auth.signOut()">Sign out</button>
       </nav>
     </header>
